@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Reimbursement App</string>
+
+    <!-- Bill Categories -->
+    <string-array name="bill_categories">
+        <item>Travel &amp; Transportation</item>
+        <item>Accommodation / Stay</item>
+        <item>Food &amp; Meals</item>
+        <item>Medical Reimbursements</item>
+        <item>Office Supplies &amp; Utilities</item>
+        <item>Training &amp; Development</item>
+        <item>Client / Business Entertainment</item>
+        <item>Miscellaneous</item>
+    </string-array>
+</resources>

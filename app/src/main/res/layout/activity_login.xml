@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#F5F5F5">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <!-- Welcome Text -->
+        <TextView
+            android:id="@+id/tvWelcome"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Welcome to our\nReimbursement App"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:textColor="#673AB7"
+            android:layout_marginTop="60dp"
+            android:layout_marginBottom="30dp" />
+
+        <!-- Card-style container for login form -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:padding="20dp"
+            android:elevation="6dp"
+            android:layout_margin="10dp"
+            android:clipToPadding="false"
+            android:layout_marginBottom="30dp"
+            android:backgroundTint="@android:color/white"
+            android:layout_gravity="center"
+            android:layout_marginTop="10dp"
+            android:layout_marginHorizontal="8dp"
+            android:translationZ="8dp"
+            android:clipChildren="false"
+            android:gravity="center"
+            android:background="@drawable/rounded_card_bg">
+
+            <!-- Email -->
+            <EditText
+                android:id="@+id/edtEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Email Address"
+                android:drawableStart="@android:drawable/ic_dialog_email"
+                android:inputType="textEmailAddress"
+                android:padding="14dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/rounded_input_bg"/>
+
+            <!-- Password -->
+            <EditText
+                android:id="@+id/edtPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Password"
+                android:drawableStart="@android:drawable/ic_lock_lock"
+                android:inputType="textPassword"
+                android:padding="14dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/rounded_input_bg"/>
+
+            <!-- Role Selection -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select Role:"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="6dp"/>
+
+            <RadioGroup
+                android:id="@+id/radioGroupRoles"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center">
+
+                <RadioButton
+                    android:id="@+id/radioStaff"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Staff"
+                    android:checked="true"/>
+
+                <RadioButton
+                    android:id="@+id/radioTeamLead"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Team Lead"
+                    android:layout_marginStart="20dp"/>
+
+                <RadioButton
+                    android:id="@+id/radioAdmin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Admin"
+                    android:layout_marginStart="20dp"/>
+            </RadioGroup>
+
+            <!-- Login Button -->
+            <Button
+                android:id="@+id/btnLogin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Login"
+                android:layout_marginTop="30dp"
+                android:backgroundTint="#2196F3"
+                android:textColor="@android:color/white"
+                android:padding="14dp"
+                android:background="@drawable/rounded_button_bg"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

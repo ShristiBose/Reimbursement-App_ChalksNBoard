@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "873526966872",
+    "project_id": "reimbursementapp-c802a",
+    "storage_bucket": "reimbursementapp-c802a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873526966872:android:25f2c4791f93e784f7682d",
+        "android_client_info": {
+          "package_name": "com.example.reimbursementapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_wO-n0_7YGWfrWNYP724tk_7fk2baavA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
