@@ -26,7 +26,7 @@ public class TeamLeadDashboardActivity extends AppCompatActivity {
         token = getSharedPreferences("APP_PREFS", MODE_PRIVATE).getString("JWT_TOKEN", null);
         userId = getSharedPreferences("APP_PREFS", MODE_PRIVATE).getString("USER_ID", null); // Assuming USER_ID is saved on login
 
-        apiService = ApiClient.getApiService(token);
+        apiService = ApiClient.getApiService();
 
         BottomNavigationView bottomNav = findViewById(R.id.teamLeadBottomNav);
 

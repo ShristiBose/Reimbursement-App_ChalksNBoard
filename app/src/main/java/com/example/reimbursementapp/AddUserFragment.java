@@ -1,5 +1,6 @@
 package com.example.reimbursementapp;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -17,7 +18,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.reimbursementapp.api.models.CreateUserRequest;
-import com.example.reimbursementapp.api.models.CreateUserResponse;
 import com.example.reimbursementapp.api.models.UserModel;
 
 import java.io.IOException;
@@ -42,11 +42,14 @@ public class AddUserFragment extends Fragment {
     private ArrayAdapter<String> teamLeadAdapter;
     private String selectedTeamLeadId = null;
 
-    private String jwtToken;
+    public AddUserFragment() {
+        // Required empty public constructor
+    }
 
-    // Constructor
-    public AddUserFragment(String token) {
-        this.jwtToken = token;
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        apiService = ApiClient.getAuthenticatedApiService(requireContext());
     }
 
     @Nullable
@@ -64,113 +67,96 @@ public class AddUserFragment extends Fragment {
         spinnerTeamLead = view.findViewById(R.id.spinnerTeamLead);
         btnAddUser = view.findViewById(R.id.btnAddUser);
 
-        // DEBUG: JWT token
-        Log.d(TAG, "JWT Token: " + jwtToken);
-
-        // Initialize ApiService
-        apiService = ApiClient.getApiService(jwtToken);
-
-        // Role spinner
-        String[] roles = {"Admin", "TeamLead", "Staff"};
-        ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, roles);
+        Context safeContext = requireContext();
+        String[] roles = {"Admin", "TEAM_LEAD", "STAFF"};
+        ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(safeContext, android.R.layout.simple_spinner_item, roles);
         roleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRole.setAdapter(roleAdapter);
 
-        // TeamLead spinner adapter
-        teamLeadAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, teamLeadNames);
+        teamLeadAdapter = new ArrayAdapter<>(safeContext, android.R.layout.simple_spinner_item, teamLeadNames);
         teamLeadAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTeamLead.setAdapter(teamLeadAdapter);
 
-        // Role selection listener
+        loadTeamLeads();
+        setupListeners();
+        return view;
+    }
+
+    private void setupListeners() {
         spinnerRole.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 String role = spinnerRole.getSelectedItem().toString();
-                if (role.equals("Staff")) {
+                if (role.equals("STAFF")) {
                     spinnerTeamLead.setVisibility(View.VISIBLE);
-                    loadTeamLeads(); // call API
                 } else {
                     spinnerTeamLead.setVisibility(View.GONE);
                     selectedTeamLeadId = null;
                 }
             }
-
             @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                spinnerTeamLead.setVisibility(View.GONE);
+            }
+        });
+
+        spinnerTeamLead.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    selectedTeamLeadId = null;
+                } else {
+                    selectedTeamLeadId = teamLeadIds.get(position - 1);
+                }
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                selectedTeamLeadId = null;
+            }
         });
 
         btnAddUser.setOnClickListener(v -> addUser());
-
-        return view;
     }
 
-    // -----------------------------
-    // Load team leads from API
-    // -----------------------------
     private void loadTeamLeads() {
-        Log.d(TAG, "Calling getTeamLeads API...");
+        spinnerTeamLead.setEnabled(false);
+        spinnerTeamLead.setVisibility(View.GONE);
 
         apiService.getTeamLeads().enqueue(new Callback<List<UserModel>>() {
             @Override
             public void onResponse(Call<List<UserModel>> call, Response<List<UserModel>> response) {
+                if (!isAdded()) return;
+
+                teamLeadNames.clear();
+                teamLeadIds.clear();
+                teamLeadNames.add("Select a Team Lead");
+
                 if (response.isSuccessful() && response.body() != null) {
-                    List<UserModel> leads = response.body();
-                    Log.d(TAG, "Raw team leads: " + leads);
-
-                    teamLeadNames.clear();
-                    teamLeadIds.clear();
-
-                    if (leads.isEmpty()) {
-                        Toast.makeText(getContext(), "No Team Leads found", Toast.LENGTH_SHORT).show();
+                    for (UserModel u : response.body()) {
+                        if (u.getId() != null) {
+                            teamLeadIds.add(u.getId());
+                            // ✅ FIXED: Changed u.getName() to u.getFullName()
+                            String displayName = u.getFullName() != null ? u.getFullName() : u.getEmail();
+                            teamLeadNames.add(displayName);
+                        }
                     }
-
-                    teamLeadNames.add("Select a Team Lead");
-                    teamLeadIds.add(null);
-
-                    for (UserModel u : leads) {
-                        Log.d(TAG, "TeamLead: " + u.getId() + " | " + u.getName());
-                        teamLeadIds.add(u.getId());
-                        teamLeadNames.add(u.getName());
-                    }
-
                     teamLeadAdapter.notifyDataSetChanged();
-
-                    spinnerTeamLead.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                            selectedTeamLeadId = (position > 0) ? teamLeadIds.get(position) : null;
-                        }
-
-                        @Override
-                        public void onNothingSelected(android.widget.AdapterView<?> parent) {
-                            selectedTeamLeadId = null;
-                        }
-                    });
-
                 } else {
-                    try {
-                        String err = response.errorBody() != null ? response.errorBody().string() : "Unknown error";
-                        Log.e(TAG, "Error loading team leads: " + err);
-                        Toast.makeText(getContext(), "Error: " + err, Toast.LENGTH_LONG).show();
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error parsing error body", e);
-                    }
+                    Toast.makeText(getContext(), "Failed to load team leads.", Toast.LENGTH_SHORT).show();
                 }
+                spinnerTeamLead.setEnabled(true);
             }
 
             @Override
             public void onFailure(Call<List<UserModel>> call, Throwable t) {
-                Log.e(TAG, "API call failed: ", t);
-                Toast.makeText(getContext(), "Network error: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Network error loading team leads.", Toast.LENGTH_SHORT).show();
+                }
+                spinnerTeamLead.setEnabled(true);
             }
         });
     }
 
-    // -----------------------------
-    // Add user API
-    // -----------------------------
     private void addUser() {
         String fullName = etFullName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
@@ -190,33 +176,38 @@ public class AddUserFragment extends Fragment {
             return;
         }
 
-        if (role.equals("Staff") && selectedTeamLeadId == null) {
-            Toast.makeText(getContext(), "Please select a Team Lead", Toast.LENGTH_SHORT).show();
+        if (role.equals("STAFF") && selectedTeamLeadId == null) {
+            Toast.makeText(getContext(), "Please select a Team Lead for the staff member", Toast.LENGTH_SHORT).show();
             return;
         }
 
         CreateUserRequest request = new CreateUserRequest(email, password, fullName, phone, role,
-                role.equals("Staff") ? selectedTeamLeadId : null);
+                role.equals("STAFF") ? selectedTeamLeadId : null);
 
-        apiService.createUser(request).enqueue(new Callback<CreateUserResponse>() {
+        apiService.createUser(request).enqueue(new Callback<Void>() {
             @Override
-            public void onResponse(Call<CreateUserResponse> call, Response<CreateUserResponse> response) {
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (!isAdded()) return;
+
                 if (response.isSuccessful()) {
-                    Toast.makeText(getContext(), "User added successfully", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "User added successfully!", Toast.LENGTH_SHORT).show();
                     resetFields();
                 } else {
                     try {
-                        String err = response.errorBody() != null ? response.errorBody().string() : "Unknown error";
-                        Toast.makeText(getContext(), "Failed to add user: " + err, Toast.LENGTH_LONG).show();
+                        String err = response.errorBody() != null ? response.errorBody().string() : "Failed to add user.";
+                        Toast.makeText(getContext(), "Error: " + err, Toast.LENGTH_LONG).show();
                     } catch (IOException e) {
                         Log.e(TAG, "Error reading error body", e);
+                        Toast.makeText(getContext(), "An unexpected error occurred.", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
 
             @Override
-            public void onFailure(Call<CreateUserResponse> call, Throwable t) {
-                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_LONG).show();
+            public void onFailure(Call<Void> call, Throwable t) {
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Network Error: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                }
             }
         });
     }

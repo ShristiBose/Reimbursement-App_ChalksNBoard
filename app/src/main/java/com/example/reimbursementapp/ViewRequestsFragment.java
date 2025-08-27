@@ -65,7 +65,7 @@ public class ViewRequestsFragment extends Fragment {
     }
 
     private void loadRequests() {
-        ApiService api = ApiClient.getApiService(jwtToken);
+        ApiService api = ApiClient.getApiService();
         // CORRECTED: Token removed from call
         api.getMyRequests().enqueue(new Callback<List<RequestModel>>() {
             @Override

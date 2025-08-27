@@ -29,7 +29,7 @@ public class AllApprovedRequestFragment extends Fragment {
         this.token = token;
         // The ApiService instance is created with the token,
         // which allows the interceptor to add it to headers.
-        this.apiService = ApiClient.getApiService(token);
+        this.apiService = ApiClient.getApiService();
     }
 
     @Nullable

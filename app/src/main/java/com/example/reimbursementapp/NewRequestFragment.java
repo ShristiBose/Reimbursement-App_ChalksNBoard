@@ -172,7 +172,7 @@ public class NewRequestFragment extends Fragment {
                 fileMimeType
         );
 
-        ApiClient.getApiService(jwtToken)
+        ApiClient.getApiService()
                 .createRequest(request) // CORRECTED: Removed the token parameter from the call
                 .enqueue(new Callback<CreateRequestResponse>() {
                     @Override
@@ -182,9 +182,18 @@ public class NewRequestFragment extends Fragment {
                             Toast.makeText(getContext(), "Request submitted! ID: " + response.body().getId(), Toast.LENGTH_SHORT).show();
                             resetForm();
                         } else {
-                            Toast.makeText(getContext(), "Submission failed!", Toast.LENGTH_SHORT).show();
+                            try {
+                                // Print backend error for debugging
+                                String errorBody = response.errorBody() != null ? response.errorBody().string() : "No error body";
+                                android.util.Log.e("NewRequest", "Error response: " + errorBody);
+                                Toast.makeText(getContext(), "Submission failed: " + errorBody, Toast.LENGTH_LONG).show();
+                            } catch (Exception e) {
+                                android.util.Log.e("NewRequest", "Error parsing errorBody", e);
+                                Toast.makeText(getContext(), "Submission failed!", Toast.LENGTH_SHORT).show();
+                            }
                         }
                     }
+
 
                     @Override
                     public void onFailure(Call<CreateRequestResponse> call, Throwable t) {

@@ -22,7 +22,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     // CORRECTED: Pass the token to the default fragment
-                    .replace(R.id.adminFragmentContainer, new AddUserFragment(jwtToken))
+                    .replace(R.id.adminFragmentContainer, new AddUserFragment())
                     .commit();
         }
 
@@ -32,7 +32,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
             if (itemId == R.id.nav_add_user) {
                 // CORRECTED: Pass the token when this item is selected
-                selectedFragment = new AddUserFragment(jwtToken);
+                selectedFragment = new AddUserFragment();
             } else if (itemId == R.id.nav_pending_staff_requests) {
                 selectedFragment = new PendingStaffRequestFragment(jwtToken);
             } else if (itemId == R.id.nav_pending_teamlead_requests) {

@@ -31,7 +31,7 @@ public class PendingStaffRequestFragment extends Fragment {
 
     public PendingStaffRequestFragment(String token) {
         this.token = token;
-        this.apiService = ApiClient.getApiService(token);
+        this.apiService = ApiClient.getApiService();
     }
 
     @Nullable

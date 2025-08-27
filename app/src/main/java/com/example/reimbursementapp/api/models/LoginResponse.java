@@ -1,12 +1,24 @@
+// In LoginResponse.java
+
 package com.example.reimbursementapp.api.models;
+
+import com.google.gson.annotations.SerializedName;
 
 public class LoginResponse {
 
-    private String message; // e.g. "SUCCESS: Login Successful. Token: <jwt>"
+    // This field name must match the key in the JSON from the server.
+    @SerializedName("token")
+    private String token;
 
-    // --- Getter ---
-    public String getMessage() { return message; }
+    // This will hold the nested user object from the response.
+    @SerializedName("user")
+    private UserModel user;
 
-    // --- Setter ---
-    public void setMessage(String message) { this.message = message; }
+    public String getToken() {
+        return token;
+    }
+
+    public UserModel getUser() {
+        return user;
+    }
 }

@@ -48,7 +48,7 @@ public class ApprovedRequestFragment extends Fragment {
     }
 
     private void loadApprovedRequests() {
-        ApiService api = ApiClient.getApiService(jwtToken);
+        ApiService api = ApiClient.getApiService();
         api.getApprovedRequestsTL().enqueue(new Callback<List<RequestModel>>() { // CORRECTED
             @Override
             public void onResponse(Call<List<RequestModel>> call, Response<List<RequestModel>> response) {

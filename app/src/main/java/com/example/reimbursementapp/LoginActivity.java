@@ -1,17 +1,22 @@
+// In LoginActivity.java
+
 package com.example.reimbursementapp;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log; // ✅ IMPORT ADDED
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.example.reimbursementapp.api.models.LoginRequest;
+import com.example.reimbursementapp.api.models.LoginResponse;
+import com.example.reimbursementapp.api.models.UserModel;
+
 import java.io.IOException;
-import okhttp3.ResponseBody; // ✅ IMPORT ADDED
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -19,10 +24,10 @@ import retrofit2.Response;
 public class LoginActivity extends AppCompatActivity {
 
     private EditText edtEmail, edtPassword;
-    private RadioGroup radioGroupRoles;
-    private RadioButton radioStaff, radioTeamLead, radioAdmin;
     private Button btnLogin;
     private ApiService apiService;
+    // RadioGroup is no longer needed for redirection logic but still used for selection.
+    private RadioGroup radioGroupRoles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,13 +36,11 @@ public class LoginActivity extends AppCompatActivity {
 
         edtEmail = findViewById(R.id.edtEmail);
         edtPassword = findViewById(R.id.edtPassword);
-        radioGroupRoles = findViewById(R.id.radioGroupRoles);
-        radioStaff = findViewById(R.id.radioStaff);
-        radioTeamLead = findViewById(R.id.radioTeamLead);
-        radioAdmin = findViewById(R.id.radioAdmin);
         btnLogin = findViewById(R.id.btnLogin);
+        radioGroupRoles = findViewById(R.id.radioGroupRoles);
 
-        apiService = ApiClient.getApiService(null);
+        // Use the non-authenticated service for the login call.
+        apiService = ApiClient.getApiService();
 
         btnLogin.setOnClickListener(v -> loginUser());
     }
@@ -51,81 +54,74 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        int selectedRoleId = radioGroupRoles.getCheckedRadioButtonId();
-        String selectedRole = selectedRoleId == radioTeamLead.getId() ? "TeamLead"
-                : selectedRoleId == radioAdmin.getId() ? "Admin"
-                : "Staff";
+        // This call now expects the new, structured LoginResponse.
+        Call<LoginResponse> call = apiService.login(new LoginRequest(email, password));
 
-        // ✅ CHANGED: The generic type for the Call is now ResponseBody
-        Call<ResponseBody> call = apiService.login(new LoginRequest(email, password));
-
-        // ✅ CHANGED: The generic type for the Callback is now ResponseBody
-        call.enqueue(new Callback<ResponseBody>() {
+        call.enqueue(new Callback<LoginResponse>() {
             @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        // Read the raw string from the response
-                        String responseString = response.body().string();
-                        String token = parseTokenFromMessage(responseString);
+                    LoginResponse loginResponse = response.body();
+                    String token = loginResponse.getToken();
+                    UserModel user = loginResponse.getUser();
 
-                        if (token != null) {
-                            // Save JWT
-                            getSharedPreferences("APP_PREFS", MODE_PRIVATE)
-                                    .edit().putString("JWT_TOKEN", token).apply();
+                    // ✅ FIXED: Check if token and user data are valid.
+                    if (token != null && !token.isEmpty() && user != null && user.getRole() != null) {
 
-                            Toast.makeText(LoginActivity.this,
-                                    "Login Successful as " + selectedRole, Toast.LENGTH_SHORT).show();
+                        // Save all necessary data to SharedPreferences for future use.
+                        SharedPreferences.Editor editor = getSharedPreferences("APP_PREFS", MODE_PRIVATE).edit();
+                        editor.putString("JWT_TOKEN", token);
+                        editor.putString("USER_ID", user.getId());
+                        editor.putString("USER_ROLE", user.getRole());
+                        editor.apply();
 
-                            // Redirect
-                            switch (selectedRole) {
-                                case "Staff":
-                                    startActivity(new Intent(LoginActivity.this, StaffDashboardActivity.class));
-                                    break;
-                                case "TeamLead":
-                                    startActivity(new Intent(LoginActivity.this, TeamLeadDashboardActivity.class));
-                                    break;
-                                case "Admin":
-                                    // ✅ CHANGED: Pass token to AdminDashboardActivity
-                                    Intent adminIntent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
-                                    adminIntent.putExtra("jwtToken", token);
-                                    startActivity(adminIntent);
-                                    break;
-                            }
-                            finish();
-                        } else {
-                            Toast.makeText(LoginActivity.this, "Login successful, but token not found in response.", Toast.LENGTH_LONG).show();
-                            Log.e("LoginActivity", "Raw successful response: " + responseString);
-                        }
-                    } catch (IOException e) {
-                        Toast.makeText(LoginActivity.this, "Error reading response", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "Login Successful as " + user.getRole(), Toast.LENGTH_SHORT).show();
+
+                        // ✅ FIXED: Redirect based on the role received from the server (more secure).
+                        redirectToDashboard(user.getRole());
+
+                    } else {
+                        Toast.makeText(LoginActivity.this, "Login successful, but response data is incomplete.", Toast.LENGTH_LONG).show();
                     }
                 } else {
-                    String err = "Login failed";
+                    String err = "Login failed. Please check your credentials.";
                     try {
                         if (response.errorBody() != null) {
                             err = response.errorBody().string();
-                            Log.e("LoginActivity", "Raw error response: " + err);
                         }
-                    } catch (IOException ignored) {}
+                    } catch (IOException e) {
+                        Log.e("LoginActivity", "Error reading error body", e);
+                    }
                     Toast.makeText(LoginActivity.this, err, Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Toast.makeText(LoginActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<LoginResponse> call, Throwable t) {
+                // This callback handles network failures, not JSON parsing errors.
+                Log.e("LoginActivity", "Network call failed", t);
+                Toast.makeText(LoginActivity.this, "Network Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private String parseTokenFromMessage(String message) {
-        if (message == null) return null;
-        String marker = "Token is: ";
-        int idx = message.indexOf(marker);
-        if (idx >= 0) {
-            return message.substring(idx + marker.length()).trim();
+    // ✅ ADDED: A dedicated method for redirection.
+    private void redirectToDashboard(String role) {
+        Intent intent;
+        switch (role.toUpperCase()) {
+            case "ADMIN":
+                intent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
+                break;
+            case "TEAMLEAD": // Or "TEAM_LEAD" depending on your backend
+            case "TEAM_LEAD":
+                intent = new Intent(LoginActivity.this, TeamLeadDashboardActivity.class);
+                break;
+            case "STAFF":
+            default:
+                intent = new Intent(LoginActivity.this, StaffDashboardActivity.class);
+                break;
         }
-        return null;
+        startActivity(intent);
+        finish(); // Close the login activity.
     }
 }

@@ -1,11 +1,11 @@
+// In ApiService.java
+
 package com.example.reimbursementapp;
 
 import com.example.reimbursementapp.api.models.*;
-
 import java.util.List;
 import java.util.Map;
-
-import okhttp3.ResponseBody;
+import okhttp3.ResponseBody; // This can be removed if not used elsewhere
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -14,13 +14,15 @@ import retrofit2.http.Path;
 
 public interface ApiService {
 
+    // ✅ CHANGED: Expect a LoginResponse object, not a generic ResponseBody
     @POST("/api/auth/login")
-    Call<ResponseBody> login(@Body LoginRequest loginRequest);
+    Call<LoginResponse> login(@Body LoginRequest loginRequest);
+
+    // ... (the rest of your interface methods remain the same)
 
     @POST("/api/admin/users")
-    Call<CreateUserResponse> createUser(@Body CreateUserRequest request);
+    Call<Void> createUser(@Body CreateUserRequest request);
 
-    // CORRECTED endpoint for team leads
     @GET("/api/teamleads")
     Call<List<UserModel>> getTeamLeads();
 
