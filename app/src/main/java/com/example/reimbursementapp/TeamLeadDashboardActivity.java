@@ -1,105 +1,110 @@
 package com.example.reimbursementapp;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.os.Bundle;
-import android.widget.EditText;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
-
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
+import java.util.HashMap;
+import java.util.Map;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class TeamLeadDashboardActivity extends AppCompatActivity {
 
-    private FirebaseFirestore db = FirebaseFirestore.getInstance();
+    private String token; // JWT token after login
+    private String userId; // TeamLead ID
+    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_team_lead);
 
-        // Bottom Navigation
+        // Retrieve token from SharedPreferences
+        token = getSharedPreferences("APP_PREFS", MODE_PRIVATE).getString("JWT_TOKEN", null);
+        userId = getSharedPreferences("APP_PREFS", MODE_PRIVATE).getString("USER_ID", null); // Assuming USER_ID is saved on login
+
+        apiService = ApiClient.getApiService(token);
+
         BottomNavigationView bottomNav = findViewById(R.id.teamLeadBottomNav);
 
+        // Default fragment on launch
+        if (savedInstanceState == null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.teamLeadFragmentContainer, new NewRequestFragment(token, "TeamLead"))
+                    .commit();
+        }
+
         bottomNav.setOnItemSelectedListener(item -> {
-            Fragment selectedFragment = null;
+            Fragment fragment = null;
             int itemId = item.getItemId();
 
-            if (itemId == R.id.nav_pending) {
-                selectedFragment = new PendingRequestFragment();
+            if (itemId == R.id.nav_new_request) {
+                fragment = new NewRequestFragment(token, "TeamLead");
+            } else if (itemId == R.id.nav_pending) {
+                fragment = new PendingRequestFragment(token);
             } else if (itemId == R.id.nav_approved) {
-                selectedFragment = new ApprovedRequestFragment();
+                fragment = new ApprovedRequestFragment(token);
             } else if (itemId == R.id.nav_my_requests) {
-                selectedFragment = new MyRequestFragment();
+                // Pass the user's role and token to the generic "View Requests" fragment
+                fragment = ViewRequestsFragment.newInstance("TeamLead", token);
             }
 
-            if (selectedFragment != null) {
-                FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-                transaction.replace(R.id.teamLeadFragmentContainer, selectedFragment);
-                transaction.commit();
+            if (fragment != null) {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.teamLeadFragmentContainer, fragment)
+                        .commit();
             }
             return true;
         });
-
-        // Set default fragment
-        if (savedInstanceState == null) {
-            bottomNav.setSelectedItemId(R.id.nav_pending);
-        }
     }
 
-    public void updateRequestStatus(RequestModel request, String status) {
-        // For rejections, show a dialog to enter remarks
-        if ("Rejected".equals(status)) {
-            showRemarksDialog(request, status);
-        } else {
-            // For approvals, just update the status
-            updateRequestInFirestore(request, status, "");
-        }
-    }
-
-    private void showRemarksDialog(RequestModel request, String status) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Enter Remarks");
-
-        final EditText input = new EditText(this);
-        input.setHint("Reason for rejection");
-        builder.setView(input);
-
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+    // This method is now redundant as its logic is handled within PendingRequestFragment.
+    // However, if called from another context, this corrected version will work.
+    public void approveRequest(String requestId) {
+        // CORRECTED: Token removed from call, added <Void> type to Callback
+        apiService.approveRequestTL(requestId).enqueue(new Callback<Void>() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String remarks = input.getText().toString().trim();
-                if (remarks.isEmpty()) {
-                    Toast.makeText(TeamLeadDashboardActivity.this, "Remarks cannot be empty", Toast.LENGTH_SHORT).show();
-                    return;
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(TeamLeadDashboardActivity.this, "Request Approved", Toast.LENGTH_SHORT).show();
+                    // Consider adding a refresh mechanism here if needed
+                } else {
+                    Toast.makeText(TeamLeadDashboardActivity.this, "Failed to approve", Toast.LENGTH_SHORT).show();
                 }
-                updateRequestInFirestore(request, status, remarks);
             }
-        });
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
 
-        builder.show();
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(TeamLeadDashboardActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    private void updateRequestInFirestore(RequestModel request, String status, String remarks) {
-        db.collection("requests").document(request.getRequestId())
-                .update("status", status, "remarks", remarks)
-                .addOnSuccessListener(aVoid -> {
-                    String message = "Request " + status.toLowerCase() + " successfully";
-                    Toast.makeText(TeamLeadDashboardActivity.this, message, Toast.LENGTH_SHORT).show();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(TeamLeadDashboardActivity.this, "Error updating request: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+    // This method is also redundant but corrected for completeness.
+    public void rejectRequest(String requestId, String remarks) {
+        Map<String, String> body = new HashMap<>();
+        body.put("remarks", remarks);
+        // CORRECTED: Token removed from call, added <Void> type to Callback
+        apiService.rejectRequestTL(requestId, body).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(TeamLeadDashboardActivity.this, "Request Rejected", Toast.LENGTH_SHORT).show();
+                    // Consider adding a refresh mechanism here if needed
+                } else {
+                    Toast.makeText(TeamLeadDashboardActivity.this, "Failed to reject", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(TeamLeadDashboardActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_add_user"
+        android:title="Add User"
+        android:icon="@drawable/ic_pending"/>
+
+    <item
+        android:id="@+id/nav_pending_staff_requests"
+        android:title="Staff Requests"
+        android:icon="@drawable/ic_pending"/>
+
+    <item
+        android:id="@+id/nav_pending_teamlead_requests"
+        android:title="TeamLead Requests"
+        android:icon="@drawable/ic_pending"/>
+
+    <item
+        android:id="@+id/nav_all_approved_requests"
+        android:title="Approved Requests"
+        android:icon="@drawable/ic_pending"/>
+</menu>

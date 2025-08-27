@@ -7,43 +7,48 @@
     android:background="@android:drawable/dialog_holo_light_frame"
     android:layout_marginBottom="12dp">
 
+    <!-- Staff/TeamLead Name -->
     <TextView
-        android:id="@+id/tvStaffName"
+        android:id="@+id/txtName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Staff Name"
+        android:text="Name"
         android:textStyle="bold"
         android:textSize="14sp"
-        android:textColor="#000"
-        android:visibility="gone"/>
+        android:textColor="#000" />
 
+    <!-- Category -->
     <TextView
-        android:id="@+id/tvCategory"
+        android:id="@+id/txtCategory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Category"
         android:textStyle="bold"
         android:textSize="16sp"
-        android:textColor="#000"/>
+        android:textColor="#000"
+        android:layout_marginTop="4dp"/>
 
+    <!-- Amount -->
     <TextView
-        android:id="@+id/tvAmount"
+        android:id="@+id/txtAmount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Amount"
         android:textSize="14sp"
         android:layout_marginTop="4dp"/>
 
+    <!-- Status -->
     <TextView
-        android:id="@+id/tvStatus"
+        android:id="@+id/txtStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Status"
         android:textSize="14sp"
         android:layout_marginTop="4dp"/>
 
+    <!-- Remarks -->
     <TextView
-        android:id="@+id/tvRemarks"
+        android:id="@+id/txtRemarks"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Remarks"
@@ -51,12 +56,14 @@
         android:layout_marginTop="4dp"
         android:visibility="gone"/>
 
+    <!-- Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginTop="8dp">
 
+        <!-- View Bill -->
         <Button
             android:id="@+id/btnViewBill"
             android:layout_width="0dp"
@@ -66,6 +73,7 @@
             android:backgroundTint="#2196F3"
             android:textColor="@android:color/white"/>
 
+        <!-- Approve -->
         <Button
             android:id="@+id/btnApprove"
             android:layout_width="0dp"
@@ -77,6 +85,7 @@
             android:visibility="gone"
             android:layout_marginStart="4dp"/>
 
+        <!-- Reject -->
         <Button
             android:id="@+id/btnReject"
             android:layout_width="0dp"
@@ -87,5 +96,26 @@
             android:textColor="@android:color/white"
             android:visibility="gone"
             android:layout_marginStart="4dp"/>
+
+        <!-- Credit -->
+        <Button
+            android:id="@+id/btnCredit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Credit"
+            android:backgroundTint="#FF9800"
+            android:textColor="@android:color/white"
+            android:visibility="gone"
+            android:layout_marginStart="4dp"/>
+
+        <!-- Receipt -->
+        <Button
+            android:id="@+id/btnViewReceipt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="View Receipt"
+            android:visibility="gone"
+            android:layout_margin="4dp"/>
     </LinearLayout>
 </LinearLayout>

@@ -1,5 +1,6 @@
 package com.example.reimbursementapp;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,15 +21,15 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class PendingRequestFragment extends Fragment {
+public class PendingTeamLeadRequestFragment extends Fragment {
 
     private RecyclerView recyclerView;
     private RequestAdapter adapter;
-    private ArrayList<RequestModel> requestList;
-    private ApiService apiService;
+    private ArrayList<RequestModel> requestList = new ArrayList<>();
     private String token;
+    private ApiService apiService;
 
-    public PendingRequestFragment(String token) {
+    public PendingTeamLeadRequestFragment(String token) {
         this.token = token;
         this.apiService = ApiClient.getApiService(token);
     }
@@ -39,32 +40,31 @@ public class PendingRequestFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_pending_request, container, false);
         recyclerView = view.findViewById(R.id.recyclerViewPending);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        requestList = new ArrayList<>();
 
-        adapter = new RequestAdapter(requestList, requireContext(), "teamlead", new RequestAdapter.OnActionListener() {
+        adapter = new RequestAdapter(requestList, getContext(), "admin", new RequestAdapter.OnActionListener() {
             @Override
             public void onApprove(RequestModel request) {
-                approveRequest(request.getRequestId());
+                // This role uses Credit, not Approve
             }
 
             @Override
             public void onReject(RequestModel request) {
-                showRejectDialog(request.getRequestId());
+                showRejectDialog(request);
             }
 
             @Override
             public void onCredit(RequestModel request) {
-                // Not used for team lead
+                creditRequest(request);
             }
         });
-
         recyclerView.setAdapter(adapter);
         loadPendingRequests();
         return view;
     }
 
     private void loadPendingRequests() {
-        apiService.getPendingRequestsTL().enqueue(new Callback<List<RequestModel>>() { // CORRECTED
+        // CORRECTED: Token removed from call
+        apiService.getPendingTeamLeadRequests().enqueue(new Callback<List<RequestModel>>() {
             @Override
             public void onResponse(Call<List<RequestModel>> call, Response<List<RequestModel>> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -72,69 +72,67 @@ public class PendingRequestFragment extends Fragment {
                     requestList.addAll(response.body());
                     adapter.notifyDataSetChanged();
                 } else {
-                    Toast.makeText(requireContext(), "Failed to load pending requests", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Failed to load team lead requests", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<List<RequestModel>> call, Throwable t) {
-                Toast.makeText(requireContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void approveRequest(String requestId) {
-        apiService.approveRequestTL(requestId).enqueue(new Callback<Void>() { // CORRECTED
+    private void creditRequest(RequestModel request) {
+        // CORRECTED: Token removed from call
+        apiService.creditRequest(request.getRequestId()).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Toast.makeText(requireContext(), "Request Approved", Toast.LENGTH_SHORT).show();
-                    loadPendingRequests(); // Refresh list
+                    requestList.remove(request);
+                    adapter.notifyDataSetChanged();
+                    Toast.makeText(getContext(), "Request credited successfully", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(requireContext(), "Failed to approve", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Failed to credit request", Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Toast.makeText(requireContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void showRejectDialog(String requestId) {
-        final EditText input = new EditText(requireContext());
+    private void showRejectDialog(RequestModel request) {
+        EditText input = new EditText(getContext());
         input.setHint("Enter rejection remarks");
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(getContext())
                 .setTitle("Reject Request")
                 .setView(input)
-                .setPositiveButton("Reject", (dialog, which) -> {
-                    String remarks = input.getText().toString().trim();
-                    if (!remarks.isEmpty()) {
-                        rejectRequest(requestId, remarks);
-                    }
-                })
+                .setPositiveButton("Reject", (dialog, which) -> rejectRequest(request, input.getText().toString()))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    private void rejectRequest(String requestId, String remarks) {
+    private void rejectRequest(RequestModel request, String remarks) {
         Map<String, String> body = new HashMap<>();
         body.put("remarks", remarks);
-        apiService.rejectRequestTL(requestId, body).enqueue(new Callback<Void>() { // CORRECTED
+        // CORRECTED: Token removed from call
+        apiService.rejectRequestAdmin(request.getRequestId(), body).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Toast.makeText(requireContext(), "Request Rejected", Toast.LENGTH_SHORT).show();
-                    loadPendingRequests(); // Refresh list
+                    requestList.remove(request);
+                    adapter.notifyDataSetChanged();
+                    Toast.makeText(getContext(), "Request rejected", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(requireContext(), "Failed to reject", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Failed to reject", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Toast.makeText(requireContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }

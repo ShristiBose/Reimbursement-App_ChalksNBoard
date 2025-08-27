@@ -50,4 +50,18 @@ dependencies {
 
     //  Add Firebase Storage
     implementation 'com.google.firebase:firebase-storage:21.0.1'
+
+    implementation 'com.itextpdf:itextg:5.5.10'
+
+    // Glide library
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+
+    // Optional: for annotation processor (if using Glide's generated API)
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+
+    //Retrofit Dependencies
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'
+
 }

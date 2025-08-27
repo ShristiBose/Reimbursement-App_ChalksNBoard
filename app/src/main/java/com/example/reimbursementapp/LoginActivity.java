@@ -2,22 +2,19 @@ package com.example.reimbursementapp;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
+import android.util.Log; // ✅ IMPORT ADDED
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+import com.example.reimbursementapp.api.models.LoginRequest;
+import java.io.IOException;
+import okhttp3.ResponseBody; // ✅ IMPORT ADDED
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -25,9 +22,7 @@ public class LoginActivity extends AppCompatActivity {
     private RadioGroup radioGroupRoles;
     private RadioButton radioStaff, radioTeamLead, radioAdmin;
     private Button btnLogin;
-
-    private FirebaseAuth mAuth;
-    private DatabaseReference userRef;
+    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,8 +37,7 @@ public class LoginActivity extends AppCompatActivity {
         radioAdmin = findViewById(R.id.radioAdmin);
         btnLogin = findViewById(R.id.btnLogin);
 
-        mAuth = FirebaseAuth.getInstance();
-        userRef = FirebaseDatabase.getInstance().getReference("Users");
+        apiService = ApiClient.getApiService(null);
 
         btnLogin.setOnClickListener(v -> loginUser());
     }
@@ -52,83 +46,86 @@ public class LoginActivity extends AppCompatActivity {
         String email = edtEmail.getText().toString().trim();
         String password = edtPassword.getText().toString().trim();
 
-        if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
-            Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show();
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show();
             return;
         }
 
         int selectedRoleId = radioGroupRoles.getCheckedRadioButtonId();
-        final String selectedRole;
+        String selectedRole = selectedRoleId == radioTeamLead.getId() ? "TeamLead"
+                : selectedRoleId == radioAdmin.getId() ? "Admin"
+                : "Staff";
 
-        if (selectedRoleId == radioTeamLead.getId()) {
-            selectedRole = "TeamLead";
-        } else if (selectedRoleId == radioAdmin.getId()) {
-            selectedRole = "Admin";
-        } else {
-            selectedRole = "Staff"; // default
-        }
+        // ✅ CHANGED: The generic type for the Call is now ResponseBody
+        Call<ResponseBody> call = apiService.login(new LoginRequest(email, password));
 
-        // Authenticate user
-        mAuth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        FirebaseUser firebaseUser = mAuth.getCurrentUser();
-                        if (firebaseUser != null) {
-                            String uid = firebaseUser.getUid();
+        // ✅ CHANGED: The generic type for the Callback is now ResponseBody
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        // Read the raw string from the response
+                        String responseString = response.body().string();
+                        String token = parseTokenFromMessage(responseString);
 
-                            // ✅ Read role from Realtime Database
-                            userRef.child(uid).child("role")
-                                    .addListenerForSingleValueEvent(new ValueEventListener() {
-                                        @Override
-                                        public void onDataChange(DataSnapshot snapshot) {
-                                            if (snapshot.exists()) {
-                                                String actualRole = snapshot.getValue(String.class);
+                        if (token != null) {
+                            // Save JWT
+                            getSharedPreferences("APP_PREFS", MODE_PRIVATE)
+                                    .edit().putString("JWT_TOKEN", token).apply();
 
-                                                if (actualRole.equals(selectedRole)) {
-                                                    Toast.makeText(LoginActivity.this,
-                                                            "Login Successful as " + actualRole,
-                                                            Toast.LENGTH_SHORT).show();
+                            Toast.makeText(LoginActivity.this,
+                                    "Login Successful as " + selectedRole, Toast.LENGTH_SHORT).show();
 
-                                                    // Redirect based on actual role
-                                                    switch (actualRole) {
-                                                        case "Staff":
-                                                            startActivity(new Intent(LoginActivity.this, StaffDashboardActivity.class));
-                                                            break;
-                                                        case "TeamLead":
-                                                            startActivity(new Intent(LoginActivity.this, TeamLeadDashboardActivity.class));
-                                                            break;
-                                                        case "Admin":
-                                                            startActivity(new Intent(LoginActivity.this, AdminDashboardActivity.class));
-                                                            break;
-                                                    }
-                                                    finish();
-                                                } else {
-                                                    Toast.makeText(LoginActivity.this,
-                                                            "Selected role does not match your account role!",
-                                                            Toast.LENGTH_LONG).show();
-                                                    mAuth.signOut(); // log out
-                                                }
-                                            } else {
-                                                Toast.makeText(LoginActivity.this,
-                                                        "Role not set for this user in database",
-                                                        Toast.LENGTH_LONG).show();
-                                                mAuth.signOut();
-                                            }
-                                        }
-
-                                        @Override
-                                        public void onCancelled(DatabaseError error) {
-                                            Toast.makeText(LoginActivity.this,
-                                                    "Database error: " + error.getMessage(),
-                                                    Toast.LENGTH_LONG).show();
-                                        }
-                                    });
+                            // Redirect
+                            switch (selectedRole) {
+                                case "Staff":
+                                    startActivity(new Intent(LoginActivity.this, StaffDashboardActivity.class));
+                                    break;
+                                case "TeamLead":
+                                    startActivity(new Intent(LoginActivity.this, TeamLeadDashboardActivity.class));
+                                    break;
+                                case "Admin":
+                                    // ✅ CHANGED: Pass token to AdminDashboardActivity
+                                    Intent adminIntent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
+                                    adminIntent.putExtra("jwtToken", token);
+                                    startActivity(adminIntent);
+                                    break;
+                            }
+                            finish();
+                        } else {
+                            Toast.makeText(LoginActivity.this, "Login successful, but token not found in response.", Toast.LENGTH_LONG).show();
+                            Log.e("LoginActivity", "Raw successful response: " + responseString);
                         }
-                    } else {
-                        Toast.makeText(LoginActivity.this,
-                                "Login Failed: " + task.getException().getMessage(),
-                                Toast.LENGTH_SHORT).show();
+                    } catch (IOException e) {
+                        Toast.makeText(LoginActivity.this, "Error reading response", Toast.LENGTH_SHORT).show();
                     }
-                });
+                } else {
+                    String err = "Login failed";
+                    try {
+                        if (response.errorBody() != null) {
+                            err = response.errorBody().string();
+                            Log.e("LoginActivity", "Raw error response: " + err);
+                        }
+                    } catch (IOException ignored) {}
+                    Toast.makeText(LoginActivity.this, err, Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Toast.makeText(LoginActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private String parseTokenFromMessage(String message) {
+        if (message == null) return null;
+        String marker = "Token is: ";
+        int idx = message.indexOf(marker);
+        if (idx >= 0) {
+            return message.substring(idx + marker.length()).trim();
+        }
+        return null;
     }
 }

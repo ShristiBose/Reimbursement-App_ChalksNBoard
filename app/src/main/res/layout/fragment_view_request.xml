@@ -7,7 +7,7 @@
     android:padding="12dp">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewMyRequests"
+        android:id="@+id/recyclerViewRequests"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
