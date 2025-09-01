@@ -1,6 +1,8 @@
 package com.example.reimbursementapp;
+import com.google.gson.Gson;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,9 +29,6 @@ public class AllApprovedRequestFragment extends Fragment {
 
     public AllApprovedRequestFragment(String token) {
         this.token = token;
-        // The ApiService instance is created with the token,
-        // which allows the interceptor to add it to headers.
-        this.apiService = ApiClient.getApiService();
     }
 
     @Nullable
@@ -38,11 +37,13 @@ public class AllApprovedRequestFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         // It's better practice to use a specific layout if available, but using the pending one works if they are identical.
         View view = inflater.inflate(R.layout.fragment_approved_request, container, false);
+        apiService = ApiClient.getAuthenticatedApiService(requireContext());
+
         recyclerView = view.findViewById(R.id.recyclerViewApproved); // Ensure this ID matches your layout
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         // For a view-only list, the action listener can be null.
-        adapter = new RequestAdapter(requestList, getContext(), "admin", null);
+        adapter = new RequestAdapter(requestList, getContext(), "approved", null);
         recyclerView.setAdapter(adapter);
 
         loadCreditedRequests();
@@ -50,24 +51,49 @@ public class AllApprovedRequestFragment extends Fragment {
     }
 
     private void loadCreditedRequests() {
-        // CORRECTED: The "Bearer " + token parameter is removed from the call.
-        // The ApiClient's interceptor handles adding the Authorization header.
         apiService.getCreditedRequests().enqueue(new Callback<List<RequestModel>>() {
             @Override
             public void onResponse(Call<List<RequestModel>> call, Response<List<RequestModel>> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    Gson gson = new Gson();
+                    String json = gson.toJson(response.body());
+                    Log.d("DEBUG", "Raw JSON (Credited Requests): " + json);
+
                     requestList.clear();
-                    requestList.addAll(response.body());
+                    for (RequestModel r : response.body()) {
+                        // FIX: Ensure requestType is set
+                        if (r.getRequestType() == null || r.getRequestType().isEmpty()) {
+                            r.setRequestType(r.getTeamLeadId() != null ? "teamlead" : "staff");
+                            Log.d("DEBUG", "Set requestType for billId=" + r.getBillId() + " -> " + r.getRequestType());
+                        }
+                        requestList.add(r);
+                    }
+
                     adapter.notifyDataSetChanged();
+
+                    for (RequestModel r : requestList) {
+                        Log.d("DEBUG", "Credited Request loaded: billId=" + r.getBillId() + ", requestType=" + r.getRequestType());
+                    }
+
                 } else {
-                    Toast.makeText(getContext(), "Failed to load credited requests", Toast.LENGTH_SHORT).show();
+                    try {
+                        String error = response.errorBody() != null ? response.errorBody().string() : "Unknown error";
+                        Log.e("DEBUG", "Failed to load credited requests: " + response.code() + " - " + error);
+                        Toast.makeText(getContext(), "Failed to load credited requests", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(getContext(), "Failed to load credited requests", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<List<RequestModel>> call, Throwable t) {
+                Log.e("DEBUG", "Error loading credited requests: " + t.getMessage(), t);
                 Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
+
         });
+
     }
 }

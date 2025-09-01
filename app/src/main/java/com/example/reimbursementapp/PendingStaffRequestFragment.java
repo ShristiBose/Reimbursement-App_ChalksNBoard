@@ -1,7 +1,9 @@
 package com.example.reimbursementapp;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +15,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.reimbursementapp.api.models.RequestModel;
+import com.google.gson.Gson;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +35,6 @@ public class PendingStaffRequestFragment extends Fragment {
 
     public PendingStaffRequestFragment(String token) {
         this.token = token;
-        this.apiService = ApiClient.getApiService();
     }
 
     @Nullable
@@ -40,10 +43,12 @@ public class PendingStaffRequestFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_pending_request, container, false);
         recyclerView = view.findViewById(R.id.recyclerViewPending);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        apiService = ApiClient.getAuthenticatedApiService(requireContext());
 
-        adapter = new RequestAdapter(requestList, getContext(), "admin", new RequestAdapter.OnActionListener() {
+        adapter = new RequestAdapter(requestList, getContext(), "admin-staff", new RequestAdapter.OnActionListener() {
             @Override
-            public void onApprove(RequestModel request) { /* Not used by admin for staff requests */ }
+            public void onApprove(RequestModel request) {
+            }
 
             @Override
             public void onReject(RequestModel request) {
@@ -61,14 +66,22 @@ public class PendingStaffRequestFragment extends Fragment {
     }
 
     private void loadPendingStaffRequests() {
-        // CORRECTED: Token is not passed here
         apiService.getPendingStaffRequests().enqueue(new Callback<List<RequestModel>>() {
             @Override
             public void onResponse(Call<List<RequestModel>> call, Response<List<RequestModel>> response) {
                 if (response.isSuccessful() && response.body() != null) {
+
+                    String rawJson = new Gson().toJson(response.body());
+                    Log.d("DEBUG", "Raw JSON (Staff Requests): " + rawJson);
+
                     requestList.clear();
                     requestList.addAll(response.body());
                     adapter.notifyDataSetChanged();
+
+
+                    for (RequestModel r : response.body()) {
+                        Log.d("DEBUG", "Staff Request loaded: billId=" + r.getBillId() + ", status=" + r.getStatus());
+                    }
                 } else {
                     Toast.makeText(getContext(), "Failed to load staff requests", Toast.LENGTH_SHORT).show();
                 }
@@ -81,6 +94,7 @@ public class PendingStaffRequestFragment extends Fragment {
         });
     }
 
+
     private void showRejectDialog(RequestModel request) {
         EditText input = new EditText(getContext());
         input.setHint("Enter rejection remarks");
@@ -92,11 +106,14 @@ public class PendingStaffRequestFragment extends Fragment {
                 .show();
     }
 
-    private void rejectRequest(RequestModel request, String remarks) {
+    private void rejectRequest(RequestModel request, String reason) {
         Map<String, String> body = new HashMap<>();
-        body.put("remarks", remarks);
-        // CORRECTED: Token is not passed here
-        apiService.rejectRequestAdmin(request.getRequestId(), body).enqueue(new Callback<Void>() {
+        body.put("reason", reason);
+
+        String endpoint = "/api/admin/bills/staff/" + request.getBillId() + "/reject";
+        Log.d("DEBUG", "Rejecting Staff Bill with billId=" + request.getBillId() + " remarks=" + reason);
+
+        apiService.rejectStaffBill(request.getBillId(), body).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
@@ -104,20 +121,30 @@ public class PendingStaffRequestFragment extends Fragment {
                     adapter.notifyDataSetChanged();
                     Toast.makeText(getContext(), "Request rejected successfully", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(getContext(), "Failed to reject request", Toast.LENGTH_SHORT).show();
+                    try {
+                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "No error body";
+                        Log.d("DEBUG", "Reject Staff failed. Endpoint=" + endpoint + " Code=" + response.code() + " Error=" + errorBody);
+                        Toast.makeText(getContext(), "Reject failed at " + endpoint + "\nCode=" + response.code() + "\nError=" + errorBody, Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e("DEBUG", "Reject Staff request error: " + t.getMessage(), t);
+                Toast.makeText(getContext(), "Reject failed at " + endpoint + "\nError: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }
 
     private void creditRequest(RequestModel request) {
-        // CORRECTED: Token is not passed here
-        apiService.creditRequest(request.getRequestId()).enqueue(new Callback<Void>() {
+        String endpoint = "/api/admin/bills/staff/" + request.getBillId() + "/credit";
+        Log.d("DEBUG", "Crediting Staff Bill with billId=" + request.getBillId());
+
+        apiService.creditStaffBill(request.getBillId()).enqueue(new Callback<Void>() {
+            @SuppressLint("NotifyDataSetChanged")
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
@@ -125,13 +152,20 @@ public class PendingStaffRequestFragment extends Fragment {
                     adapter.notifyDataSetChanged();
                     Toast.makeText(getContext(), "Amount credited successfully", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(getContext(), "Failed to credit", Toast.LENGTH_SHORT).show();
+                    try {
+                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "No error body";
+                        Log.d("DEBUG", "Credit Staff failed. Endpoint=" + endpoint + " Code=" + response.code() + " Error=" + errorBody);
+                        Toast.makeText(getContext(), "Credit failed at " + endpoint + "\nCode=" + response.code() + "\nError=" + errorBody, Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e("DEBUG", "Credit Staff request error: " + t.getMessage(), t);
+                Toast.makeText(getContext(), "Credit failed at " + endpoint + "\nError: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

@@ -6,6 +6,16 @@
     android:background="#F5F5F5"
     android:padding="12dp">
 
+    <TextView
+        android:id="@+id/tvWelcomeStaff"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="My Requests"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#2196F3"
+        android:layout_marginBottom="20dp"/>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewRequests"
         android:layout_width="match_parent"

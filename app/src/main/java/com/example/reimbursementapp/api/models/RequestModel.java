@@ -6,7 +6,7 @@ import java.util.Date;
 public class RequestModel {
 
     @SerializedName("id")
-    private String id;
+    private String billId;
 
     @SerializedName("staffName")
     private String staffName;
@@ -57,17 +57,8 @@ public class RequestModel {
     private Date timestamp;
 
     // --- Getters and Setters ---
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    // RequestModel.java
-    public String getRequestId() {
-        return id;
-    }
-
-    public void setRequestId(String requestId) {
-        this.id = requestId;
-    }
+    public String getBillId() { return billId; }
+    public void setBillId(String id) { this.billId = id; }
 
     public String getStaffName() { return staffName; }
     public void setStaffName(String staffName) { this.staffName = staffName; }

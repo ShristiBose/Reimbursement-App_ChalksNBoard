@@ -26,7 +26,7 @@ public class StaffDashboardActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.staffBottomNav);
 
-        // Load NewRequestFragment by default
+
         if (savedInstanceState == null) {
             getSupportFragmentManager()
                     .beginTransaction()
@@ -40,7 +40,7 @@ public class StaffDashboardActivity extends AppCompatActivity {
             if (item.getItemId() == R.id.nav_new_request) {
                 selectedFragment = new NewRequestFragment(jwtToken, userRole);
             } else if (item.getItemId() == R.id.nav_view_requests) {
-                selectedFragment = ViewRequestsFragment.newInstance(userRole, jwtToken);
+                selectedFragment = ViewRequestsFragment.newInstance(jwtToken);
             }
 
             if (selectedFragment != null) {

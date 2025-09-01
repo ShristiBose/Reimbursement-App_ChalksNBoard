@@ -1,6 +1,7 @@
 package com.example.reimbursementapp;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,21 +21,18 @@ import retrofit2.Response;
 public class ViewRequestsFragment extends Fragment {
 
     private static final String ARG_ROLE = "role";
-    private static final String ARG_TOKEN = "jwtToken";
 
     private String role;
-    private String jwtToken;
     private RecyclerView recyclerViewRequests;
     private RequestAdapter requestAdapter;
     private ArrayList<RequestModel> requestList;
 
     public ViewRequestsFragment() { }
 
-    public static ViewRequestsFragment newInstance(String role, String jwtToken) {
+    public static ViewRequestsFragment newInstance(String role) {
         ViewRequestsFragment fragment = new ViewRequestsFragment();
         Bundle args = new Bundle();
         args.putString(ARG_ROLE, role);
-        args.putString(ARG_TOKEN, jwtToken);
         fragment.setArguments(args);
         return fragment;
     }
@@ -43,8 +41,7 @@ public class ViewRequestsFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            role = getArguments().getString(ARG_ROLE);
-            jwtToken = getArguments().getString(ARG_TOKEN);
+            role = getArguments().getString(ARG_ROLE, "staff");
         }
     }
 
@@ -56,8 +53,7 @@ public class ViewRequestsFragment extends Fragment {
         recyclerViewRequests.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         requestList = new ArrayList<>();
-        // Action listener is null as this is a view-only list for the user
-        requestAdapter = new RequestAdapter(requestList, requireContext(), role != null ? role : "staff", null);
+        requestAdapter = new RequestAdapter(requestList, requireContext(), role, null);
         recyclerViewRequests.setAdapter(requestAdapter);
 
         loadRequests();
@@ -65,9 +61,22 @@ public class ViewRequestsFragment extends Fragment {
     }
 
     private void loadRequests() {
-        ApiService api = ApiClient.getApiService();
-        // CORRECTED: Token removed from call
-        api.getMyRequests().enqueue(new Callback<List<RequestModel>>() {
+        ApiService api = ApiClient.getAuthenticatedApiService(requireContext());
+
+        Call<List<RequestModel>> call;
+        switch (role.toLowerCase()) {
+            case "teamlead":
+                call = api.getPendingRequestsTL();
+                break;
+            case "admin":
+                call = api.getPendingStaffRequests();
+                break;
+            default:
+                call = api.getMyRequests();
+                break;
+        }
+
+        call.enqueue(new Callback<List<RequestModel>>() {
             @Override
             public void onResponse(Call<List<RequestModel>> call, Response<List<RequestModel>> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -75,7 +84,14 @@ public class ViewRequestsFragment extends Fragment {
                     requestList.addAll(response.body());
                     requestAdapter.notifyDataSetChanged();
                 } else {
-                    Toast.makeText(requireContext(), "Failed to load requests", Toast.LENGTH_SHORT).show();
+                    try {
+                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "No error body";
+                        Log.e("ViewRequests", "Error response: " + errorBody);
+                        Toast.makeText(requireContext(), "Failed to load requests", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(requireContext(), "Failed to load requests", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 

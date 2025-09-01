@@ -1,5 +1,3 @@
-// In LoginActivity.java
-
 package com.example.reimbursementapp;
 
 import android.content.Intent;
@@ -26,7 +24,6 @@ public class LoginActivity extends AppCompatActivity {
     private EditText edtEmail, edtPassword;
     private Button btnLogin;
     private ApiService apiService;
-    // RadioGroup is no longer needed for redirection logic but still used for selection.
     private RadioGroup radioGroupRoles;
 
     @Override
@@ -39,7 +36,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         radioGroupRoles = findViewById(R.id.radioGroupRoles);
 
-        // Use the non-authenticated service for the login call.
+
         apiService = ApiClient.getApiService();
 
         btnLogin.setOnClickListener(v -> loginUser());
@@ -54,7 +51,7 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // This call now expects the new, structured LoginResponse.
+
         Call<LoginResponse> call = apiService.login(new LoginRequest(email, password));
 
         call.enqueue(new Callback<LoginResponse>() {
@@ -65,10 +62,10 @@ public class LoginActivity extends AppCompatActivity {
                     String token = loginResponse.getToken();
                     UserModel user = loginResponse.getUser();
 
-                    // ✅ FIXED: Check if token and user data are valid.
+
                     if (token != null && !token.isEmpty() && user != null && user.getRole() != null) {
 
-                        // Save all necessary data to SharedPreferences for future use.
+
                         SharedPreferences.Editor editor = getSharedPreferences("APP_PREFS", MODE_PRIVATE).edit();
                         editor.putString("JWT_TOKEN", token);
                         editor.putString("USER_ID", user.getId());
@@ -77,7 +74,7 @@ public class LoginActivity extends AppCompatActivity {
 
                         Toast.makeText(LoginActivity.this, "Login Successful as " + user.getRole(), Toast.LENGTH_SHORT).show();
 
-                        // ✅ FIXED: Redirect based on the role received from the server (more secure).
+
                         redirectToDashboard(user.getRole());
 
                     } else {
@@ -105,7 +102,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    // ✅ ADDED: A dedicated method for redirection.
+
     private void redirectToDashboard(String role) {
         Intent intent;
         switch (role.toUpperCase()) {
@@ -122,6 +119,6 @@ public class LoginActivity extends AppCompatActivity {
                 break;
         }
         startActivity(intent);
-        finish(); // Close the login activity.
+        finish();
     }
 }

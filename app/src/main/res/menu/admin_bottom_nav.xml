@@ -4,20 +4,20 @@
     <item
         android:id="@+id/nav_add_user"
         android:title="Add User"
-        android:icon="@drawable/ic_pending"/>
+        android:icon="@drawable/ic_add_user_icon"/>
 
     <item
         android:id="@+id/nav_pending_staff_requests"
         android:title="Staff Requests"
-        android:icon="@drawable/ic_pending"/>
+        android:icon="@drawable/ic_pending_request_icon"/>
 
     <item
         android:id="@+id/nav_pending_teamlead_requests"
         android:title="TeamLead Requests"
-        android:icon="@drawable/ic_pending"/>
+        android:icon="@drawable/ic_pending_request_icon"/>
 
     <item
         android:id="@+id/nav_all_approved_requests"
         android:title="Approved Requests"
-        android:icon="@drawable/ic_pending"/>
+        android:icon="@drawable/ic_approved_request_icon"/>
 </menu>

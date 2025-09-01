@@ -135,7 +135,7 @@ public class AddUserFragment extends Fragment {
                     for (UserModel u : response.body()) {
                         if (u.getId() != null) {
                             teamLeadIds.add(u.getId());
-                            // ✅ FIXED: Changed u.getName() to u.getFullName()
+
                             String displayName = u.getFullName() != null ? u.getFullName() : u.getEmail();
                             teamLeadNames.add(displayName);
                         }

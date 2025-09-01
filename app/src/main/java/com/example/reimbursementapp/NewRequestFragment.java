@@ -66,7 +66,7 @@ public class NewRequestFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_new_request, container, false);
 
-        tvWelcome = view.findViewById(R.id.tvWelcomeStaff);
+        //tvWelcome = view.findViewById(R.id.tvWelcomeStaff);
         spinnerBillType = view.findViewById(R.id.spinnerBillType);
         etDescription = view.findViewById(R.id.etDescription);
         etBillAmount = view.findViewById(R.id.etBillAmount);
@@ -78,7 +78,7 @@ public class NewRequestFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerBillType.setAdapter(adapter);
 
-        tvWelcome.setText("Welcome, " + userRole + "!");
+        //tvWelcome.setText("Welcome, " + userRole + "!");
 
         progressDialog = new ProgressDialog(getContext());
         progressDialog.setCancelable(false);
@@ -172,8 +172,8 @@ public class NewRequestFragment extends Fragment {
                 fileMimeType
         );
 
-        ApiClient.getApiService()
-                .createRequest(request) // CORRECTED: Removed the token parameter from the call
+        ApiClient.getAuthenticatedApiService(requireContext())
+                .createRequest(request)
                 .enqueue(new Callback<CreateRequestResponse>() {
                     @Override
                     public void onResponse(Call<CreateRequestResponse> call, Response<CreateRequestResponse> response) {
@@ -183,7 +183,7 @@ public class NewRequestFragment extends Fragment {
                             resetForm();
                         } else {
                             try {
-                                // Print backend error for debugging
+
                                 String errorBody = response.errorBody() != null ? response.errorBody().string() : "No error body";
                                 android.util.Log.e("NewRequest", "Error response: " + errorBody);
                                 Toast.makeText(getContext(), "Submission failed: " + errorBody, Toast.LENGTH_LONG).show();

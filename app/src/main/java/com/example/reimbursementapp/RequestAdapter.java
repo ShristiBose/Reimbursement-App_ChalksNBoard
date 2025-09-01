@@ -1,7 +1,7 @@
 package com.example.reimbursementapp;
 
+import com.example.reimbursementapp.api.models.ReceiptModel;
 import com.example.reimbursementapp.api.models.RequestModel;
-
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -12,11 +12,9 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Element;
 import com.itextpdf.text.Font;
@@ -25,12 +23,12 @@ import com.itextpdf.text.Phrase;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
+import retrofit2.Call;
 
 public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestViewHolder> {
 
@@ -42,17 +40,17 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
 
     private final List<RequestModel> requestList;
     private final Context context;
-    private final String role; // "staff", "teamlead", "admin"
+    private final String mode;
     private final OnActionListener actionListener;
     private static final String TAG = "RequestAdapter";
 
     public RequestAdapter(List<RequestModel> requestList,
                           Context context,
-                          String role,
+                          String mode,
                           OnActionListener actionListener) {
         this.requestList = requestList;
         this.context = context;
-        this.role = role == null ? "staff" : role.toLowerCase();
+        this.mode = mode == null ? "" : mode.toLowerCase();
         this.actionListener = actionListener;
     }
 
@@ -68,12 +66,14 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
     public void onBindViewHolder(@NonNull RequestViewHolder holder, int position) {
         RequestModel request = requestList.get(position);
 
+        // --- Setup TextViews ---
         holder.tvCategory.setText("Category: " + safeText(request.getCategory()));
         holder.tvAmount.setText("Amount: " +
-                (request.getAmount() != null ? String.format(Locale.US, "â‚¹%.2f", request.getAmount()) : "N/A"));
+                (request.getAmount() != null ? String.format(Locale.US, "₹%.2f", request.getAmount()) : "N/A"));
 
         String statusText = request.getStatusMessage() != null && !request.getStatusMessage().isEmpty()
-                ? request.getStatusMessage() : request.getStatus();
+                ? request.getStatusMessage()
+                : request.getStatus();
         holder.tvStatus.setText("Status: " + safeText(statusText));
 
         if (request.getRemarks() != null && !request.getRemarks().isEmpty()) {
@@ -83,57 +83,63 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
             holder.tvRemarks.setVisibility(View.GONE);
         }
 
-        if ("teamlead".equals(role) || "admin".equals(role)) {
-            holder.tvStaffName.setText("Staff: " + safeText(request.getStaffName()));
-            holder.tvStaffName.setVisibility(View.VISIBLE);
-        } else {
-            holder.tvStaffName.setVisibility(View.GONE);
-        }
+        holder.tvStaffName.setText(request.getStaffName() != null ? "Staff: " + request.getStaffName() : "");
+        holder.tvStaffName.setVisibility(request.getStaffName() != null ? View.VISIBLE : View.GONE);
 
-        // View Bill button logic
-        holder.btnViewBill.setOnClickListener(v -> viewBill(request));
 
-        // View Receipt button logic for "Credited" status
-        if (equalsIgnoreCaseSafe(request.getStatus(), "Credited")) {
-            holder.btnViewReceipt.setVisibility(View.VISIBLE);
-            holder.btnViewReceipt.setOnClickListener(v -> generateAndViewReceipt(request));
-        } else {
-            holder.btnViewReceipt.setVisibility(View.GONE);
-        }
-
-        // --- Button Visibility Logic ---
         holder.btnApprove.setVisibility(View.GONE);
         holder.btnReject.setVisibility(View.GONE);
         holder.btnCredit.setVisibility(View.GONE);
+        holder.btnViewReceipt.setVisibility(View.GONE);
 
-        // Rule for Team Lead: Show Approve/Reject for "Pending" staff requests
-        if ("teamlead".equals(role) && equalsIgnoreCaseSafe(request.getStatus(), "Pending")) {
-            holder.btnApprove.setVisibility(View.VISIBLE);
-            holder.btnReject.setVisibility(View.VISIBLE);
-            holder.btnApprove.setOnClickListener(v -> actionListener.onApprove(request));
-            holder.btnReject.setOnClickListener(v -> actionListener.onReject(request));
+
+        holder.btnViewBill.setVisibility(View.VISIBLE);
+        holder.btnViewBill.setOnClickListener(v -> viewBill(request));
+
+
+        if (request.getCreditedDate() != null || equalsIgnoreCaseSafe(request.getStatus(), "Credited")) {
+            holder.btnViewReceipt.setVisibility(View.VISIBLE);
+            holder.btnViewReceipt.setOnClickListener(v -> fetchAndViewReceipt(request));
+            return;
         }
 
-        // Rule for Admin:
-        boolean isApprovedByTeamLead = equalsIgnoreCaseSafe(request.getStatus(), "Approved");
-        boolean isTeamLeadOwnRequest = request.getStaffId() != null
-                && request.getTeamLeadId() != null
-                && request.getStaffId().equals(request.getTeamLeadId());
-        boolean isPendingTeamLeadRequest = isTeamLeadOwnRequest && equalsIgnoreCaseSafe(request.getStatus(), "Pending");
 
-        if ("admin".equals(role) && (isApprovedByTeamLead || isPendingTeamLeadRequest)) {
-            holder.btnCredit.setVisibility(View.VISIBLE);
-            holder.btnReject.setVisibility(View.VISIBLE);
-            holder.btnCredit.setOnClickListener(v -> actionListener.onCredit(request));
-            holder.btnReject.setOnClickListener(v -> actionListener.onReject(request));
+        if (actionListener != null) {
+            String role = mode;
+            String status = request.getStatus() != null ? request.getStatus().toLowerCase() : "";
+
+            if ("teamlead".equals(role)) {
+                if (status.contains("pending")) {
+                    holder.btnApprove.setVisibility(View.VISIBLE);
+                    holder.btnReject.setVisibility(View.VISIBLE);
+                    holder.btnApprove.setOnClickListener(v -> actionListener.onApprove(request));
+                    holder.btnReject.setOnClickListener(v -> actionListener.onReject(request));
+                }
+            } else if ("admin-staff".equals(role) || "admin-teamlead".equals(role)) {
+                boolean isApprovedByTL = status.contains("approved");
+                boolean isTeamLeadOwnRequest = request.getStaffId() != null
+                        && request.getTeamLeadId() != null
+                        && request.getStaffId().equals(request.getTeamLeadId());
+                boolean isPendingTLRequest = isTeamLeadOwnRequest && status.contains("pending");
+
+                if (isApprovedByTL || isPendingTLRequest) {
+                    holder.btnCredit.setVisibility(View.VISIBLE);
+                    holder.btnReject.setVisibility(View.VISIBLE);
+                    holder.btnCredit.setOnClickListener(v -> actionListener.onCredit(request));
+                    holder.btnReject.setOnClickListener(v -> actionListener.onReject(request));
+                }
+            }
         }
     }
+
+
 
     private void viewBill(RequestModel request) {
         if (request.getFileBase64() == null || request.getFileBase64().isEmpty()) {
             Toast.makeText(context, "No bill available", Toast.LENGTH_SHORT).show();
             return;
         }
+
         try {
             byte[] fileBytes = android.util.Base64.decode(request.getFileBase64(), android.util.Base64.DEFAULT);
             String mime = request.getFileMimeType();
@@ -152,8 +158,7 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
             Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", tempFile);
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, mime != null ? mime : "*/*");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
 
             if (intent.resolveActivity(context.getPackageManager()) != null) {
                 context.startActivity(intent);
@@ -166,9 +171,71 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
         }
     }
 
-    private void generateAndViewReceipt(RequestModel request) {
+    private void fetchAndViewReceipt(RequestModel request) {
+        ApiService api = ApiClient.getAuthenticatedApiService(context);
+
+        if (request.getBillId() == null || request.getBillId().isEmpty()) {
+            Toast.makeText(context, "Cannot fetch receipt: invalid bill ID", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String requestType;
+        if (request.getRequestType() != null) {
+            requestType = request.getRequestType().toLowerCase();
+        } else if ("teamlead".equals(mode)) {
+            requestType = "teamlead";
+        } else {
+            requestType = "staff";
+        }
+
+        Toast.makeText(context, "Mode=" + mode + ", RequestType=" + requestType, Toast.LENGTH_LONG).show();
+        boolean isUserRole = "staff".equals(mode) || "teamlead".equals(mode);
+
+        Call<ReceiptModel> call;
+
+        if (isUserRole) {
+
+            if ("teamlead".equals(requestType)) {
+                call = api.getTeamLeadReceiptUser(request.getBillId());
+                Log.d(TAG, "Fetching TeamLead receipt (User API) for billId=" + request.getBillId());
+            } else {
+                call = api.getStaffReceiptUser(request.getBillId());
+                Log.d(TAG, "Fetching Staff receipt (User API) for billId=" + request.getBillId());
+            }
+        } else {
+
+            if ("teamlead".equals(requestType)) {
+                call = api.getTeamLeadReceiptAdmin(request.getBillId());
+                Log.d(TAG, "Fetching TeamLead receipt (Admin API) for billId=" + request.getBillId());
+            } else {
+                call = api.getStaffReceipt(request.getBillId());
+                Log.d(TAG, "Fetching Staff receipt (Admin API) for billId=" + request.getBillId());
+            }
+        }
+
+        call.enqueue(new retrofit2.Callback<ReceiptModel>() {
+            @Override
+            public void onResponse(Call<ReceiptModel> call, retrofit2.Response<ReceiptModel> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    generateAndViewReceipt(response.body());
+                } else {
+                    Toast.makeText(context, "Failed to fetch receipt: " + response.code(), Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Receipt fetch failed: " + response.code() + " - " + response.message());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ReceiptModel> call, Throwable t) {
+                Toast.makeText(context, "Error fetching receipt: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Receipt fetch error", t);
+            }
+        });
+    }
+
+
+    private void generateAndViewReceipt(ReceiptModel receipt) {
         try {
-            File pdfFile = new File(context.getCacheDir(), "receipt_" + request.getReceiptId() + ".pdf");
+            File pdfFile = new File(context.getCacheDir(), "receipt_" + receipt.getReceiptId() + ".pdf");
             Document document = new Document();
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
@@ -181,23 +248,16 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
 
             PdfPTable table = new PdfPTable(2);
             table.setWidthPercentage(100);
-            table.setSpacingBefore(10f);
-
-            addTableRow(table, "Receipt ID:", request.getReceiptId());
-            addTableRow(table, "Request ID:", request.getId()); // âœ… FIXED from getRequestId() to getId()
-            addTableRow(table, "Staff Name:", request.getStaffName());
-            addTableRow(table, "Category:", request.getCategory());
-            addTableRow(table, "Amount:", request.getAmount() != null ?
-                    String.format(Locale.US, "â‚¹%.2f", request.getAmount()) : "N/A");
-            addTableRow(table, "Description:", request.getDescription());
-
-            if (request.getCreditedDate() != null) {
-                SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault());
-                addTableRow(table, "Credited Date:", dateFormat.format(request.getCreditedDate()));
-            }
-            if (request.getCreditedBy() != null) {
-                addTableRow(table, "Credited By (Admin):", request.getCreditedBy());
-            }
+            addTableRow(table, "Receipt ID:", receipt.getReceiptId());
+            addTableRow(table, "Request ID:", receipt.getRequestId());
+            addTableRow(table, "Staff Name:", receipt.getStaffName());
+            addTableRow(table, "Category:", receipt.getCategory());
+            addTableRow(table, "Amount:", receipt.getAmount() != null ?
+                    String.format(Locale.US, "₹%.2f", receipt.getAmount()) : "N/A");
+            addTableRow(table, "Description:", receipt.getDescription());
+            addTableRow(table, "Credited Date:", receipt.getCreditedDate() != null ?
+                    new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(receipt.getCreditedDate()) : "N/A");
+            addTableRow(table, "Credited By (Admin):", receipt.getCreditedBy());
 
             document.add(table);
             document.close();
@@ -205,8 +265,7 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
             Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", pdfFile);
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             intent.setDataAndType(uri, "application/pdf");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
 
         } catch (Exception e) {
@@ -235,10 +294,6 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
         return requestList != null ? requestList.size() : 0;
     }
 
-    private boolean equalsIgnoreCaseSafe(String a, String b) {
-        return a != null && a.equalsIgnoreCase(b);
-    }
-
     private String safeText(String text) {
         return text != null ? text : "N/A";
     }
@@ -260,5 +315,9 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
             btnCredit = itemView.findViewById(R.id.btnCredit);
             btnViewReceipt = itemView.findViewById(R.id.btnViewReceipt);
         }
+    }
+
+    private boolean equalsIgnoreCaseSafe(String a, String b) {
+        return a != null && b != null && a.equalsIgnoreCase(b);
     }
 }
