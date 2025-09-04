@@ -1,5 +1,6 @@
 package com.example.reimbursementapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -49,9 +50,12 @@ public class TeamLeadDashboardActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_approved) {
                 fragment = ApprovedRequestFragment.newInstance(token);
             } else if (itemId == R.id.nav_my_requests) {
-
                 fragment = ViewRequestsFragment.newInstance( token);
+            } else if (itemId == R.id.nav_logout) {
+                logoutUser();
+                return true;
             }
+
 
             if (fragment != null) {
                 getSupportFragmentManager()
@@ -62,6 +66,16 @@ public class TeamLeadDashboardActivity extends AppCompatActivity {
             return true;
         });
     }
+
+    private void logoutUser() {
+        getSharedPreferences("APP_PREFS", MODE_PRIVATE).edit().clear().apply();
+        Intent intent = new Intent(TeamLeadDashboardActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+
 
 
     public void approveRequest(String requestId) {

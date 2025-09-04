@@ -43,7 +43,7 @@ public class AllApprovedRequestFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         // For a view-only list, the action listener can be null.
-        adapter = new RequestAdapter(requestList, getContext(), "approved", null);
+        adapter = new RequestAdapter(requestList, getContext(), "admin", null);
         recyclerView.setAdapter(adapter);
 
         loadCreditedRequests();

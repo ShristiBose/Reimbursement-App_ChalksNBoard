@@ -21,7 +21,7 @@ import java.util.Locale;
 
 public class ApiClient {
 
-    private static final String BASE_URL = "https://b1fc30a8b8c2.ngrok-free.app";
+    private static final String BASE_URL = "https://90587ae9029a.ngrok-free.app";
     private static Retrofit retrofit = null;
 
 

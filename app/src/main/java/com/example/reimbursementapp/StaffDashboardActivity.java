@@ -41,6 +41,10 @@ public class StaffDashboardActivity extends AppCompatActivity {
                 selectedFragment = new NewRequestFragment(jwtToken, userRole);
             } else if (item.getItemId() == R.id.nav_view_requests) {
                 selectedFragment = ViewRequestsFragment.newInstance(jwtToken);
+            } else if (item.getItemId() == R.id.nav_logout) {
+                logoutUser();
+                return true;
+
             }
 
             if (selectedFragment != null) {
@@ -52,5 +56,12 @@ public class StaffDashboardActivity extends AppCompatActivity {
 
             return true;
         });
+    }
+    private void logoutUser() {
+        getSharedPreferences("APP_PREFS", MODE_PRIVATE).edit().clear().apply();
+        Intent intent = new Intent(StaffDashboardActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

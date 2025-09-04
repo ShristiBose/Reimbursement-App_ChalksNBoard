@@ -1,5 +1,6 @@
 package com.example.reimbursementapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -17,11 +18,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
         jwtToken = getIntent().getStringExtra("jwtToken");
 
         BottomNavigationView bottomNav = findViewById(R.id.adminBottomNav);
-
-        // Load default fragment
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    // CORRECTED: Pass the token to the default fragment
                     .replace(R.id.adminFragmentContainer, new AddUserFragment())
                     .commit();
         }
@@ -39,6 +37,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
                 selectedFragment = new PendingTeamLeadRequestFragment(jwtToken);
             } else if (itemId == R.id.nav_all_approved_requests) {
                 selectedFragment = new AllApprovedRequestFragment(jwtToken);
+            } else if (itemId == R.id.nav_logout) {
+                logoutUser();
+                return true;
             }
 
             if (selectedFragment != null) {
@@ -48,5 +49,12 @@ public class AdminDashboardActivity extends AppCompatActivity {
             }
             return true;
         });
+    }
+    private void logoutUser() {
+        getSharedPreferences("APP_PREFS", MODE_PRIVATE).edit().clear().apply();
+        Intent intent = new Intent(AdminDashboardActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

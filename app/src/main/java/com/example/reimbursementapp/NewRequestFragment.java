@@ -161,6 +161,39 @@ public class NewRequestFragment extends Fragment {
 
         String selectedCategory = spinnerBillType.getSelectedItem().toString();
 
+        double limit = Double.MAX_VALUE;
+
+        switch (selectedCategory) {
+            case "Travel & Transportation":
+                limit = 20000.0;
+                break;
+            case "Accommodation / Stay":
+                limit = 15000.0;
+                break;
+            case "Food & Meals":
+                limit = 5000.0;
+                break;
+            case "Medical Reimbursements":
+                limit = 10000.0;
+                break;
+            case "Office Supplies & Utilities":
+                limit = 8000.0;
+                break;
+            case "Training & Development":
+                limit = 12000.0;
+                break;
+            case "Client / Business Entertainment":
+                limit = 15000.0;
+                break;
+            case "Miscellaneous":
+                limit = 3000.0;
+                break;
+        }
+
+        if (amount > limit) {
+            Toast.makeText(getContext(), "Bill amount exceeds limit for " + selectedCategory, Toast.LENGTH_SHORT).show();
+            return;
+        }
         progressDialog.setMessage("Submitting request...");
         progressDialog.show();
 

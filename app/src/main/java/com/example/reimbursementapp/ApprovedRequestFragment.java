@@ -60,7 +60,7 @@ public class ApprovedRequestFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         approvedList = new ArrayList<>();
-        adapter = new RequestAdapter(approvedList, requireContext(), "approved", null);
+        adapter = new RequestAdapter(approvedList, requireContext(), "teamlead", null);
         recyclerView.setAdapter(adapter);
 
         return view;

@@ -23,7 +23,7 @@
                 android:id="@+id/tvWelcomeStaff"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Welcome, Staff!"
+                android:text="Welcome User !"
                 android:textSize="22sp"
                 android:textStyle="bold"
                 android:textColor="#2196F3"

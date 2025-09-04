@@ -101,15 +101,15 @@ public interface ApiService {
 
     // RECEIPT ENDPOINTS (Admin)
     @GET("/api/admin/bills/staff/{billId}/receipt")
-    Call<ReceiptModel> getStaffReceipt(@Path("billId") String billId);
+    Call<ReceiptModel> getStaffReceiptAdmin(@Path("billId") String billId);
 
     @GET("/api/admin/bills/teamlead/{billId}/receipt")
     Call<ReceiptModel> getTeamLeadReceiptAdmin(@Path("billId") String billId);
 
     //  ENDPOINTS FOR VIEWING RECEIPTS
-    @GET("api/bills/{billId}/receipt")
+    @GET("/api/bills/{billId}/receipt")
     Call<ReceiptModel> getStaffReceiptUser(@Path("billId") String billId);
 
-    @GET("api/tl/bills/{billId}/receipt")
+    @GET("/api/tl/bills/{billId}/receipt")
     Call<ReceiptModel> getTeamLeadReceiptUser(@Path("billId") String billId);
 }

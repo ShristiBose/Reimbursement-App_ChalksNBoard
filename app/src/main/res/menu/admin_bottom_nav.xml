@@ -20,4 +20,9 @@
         android:id="@+id/nav_all_approved_requests"
         android:title="Approved Requests"
         android:icon="@drawable/ic_approved_request_icon"/>
+
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@drawable/ic_logout_icon"
+        android:title="Logout"/>
 </menu>
