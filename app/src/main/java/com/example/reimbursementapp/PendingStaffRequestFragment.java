@@ -2,6 +2,7 @@ package com.example.reimbursementapp;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.reimbursementapp.api.models.RequestModel;
 import com.google.gson.Gson;
+import com.razorpay.PaymentResultListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +26,10 @@ import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import com.razorpay.Checkout;        // For Razorpay checkout
+import android.app.Activity;          // For Activity reference
+import org.json.JSONObject;
 
 public class PendingStaffRequestFragment extends Fragment {
 
@@ -139,33 +145,110 @@ public class PendingStaffRequestFragment extends Fragment {
         });
     }
 
-    private void creditRequest(RequestModel request) {
-        String endpoint = "/api/admin/bills/staff/" + request.getBillId() + "/credit";
-        Log.d("DEBUG", "Crediting Staff Bill with billId=" + request.getBillId());
+    // Called from MainActivity when payment is successful
+    public void onPaymentSuccessForward(String razorpayPaymentID) {
+        Toast.makeText(getContext(), "Payment Successful: " + razorpayPaymentID, Toast.LENGTH_SHORT).show();
 
-        apiService.creditStaffBill(request.getBillId()).enqueue(new Callback<Void>() {
-            @SuppressLint("NotifyDataSetChanged")
+        if (currentRequest != null) {
+            markRequestAsCredited(currentRequest, razorpayPaymentID);
+        }
+    }
+
+    // Called from MainActivity when payment fails
+    public void onPaymentErrorForward(int code, String response) {
+        Toast.makeText(getContext(), "Payment failed: " + response, Toast.LENGTH_SHORT).show();
+        // Optional: reset currentRequest or handle retry
+        currentRequest = null;
+    }
+
+    // Keep a reference to the request being paid
+    private RequestModel currentRequest;
+
+    private void creditRequest(RequestModel request) {
+        if (request.getAmount() == null || request.getAmount() <= 0) {
+            Toast.makeText(getContext(), "Invalid amount for payment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        currentRequest = request;
+        startRazorpayPayment(request);
+    }
+
+    // 3. Razorpay checkout method
+    private void startRazorpayPayment(RequestModel request) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            Toast.makeText(getContext(), "Payment requires Android 5.0+", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Log.d("RAZORPAY", "Starting payment process");
+        try {
+            final Activity activity = getActivity();
+            if (activity == null || activity.isFinishing() || !isAdded()) {
+                Toast.makeText(getContext(), "Cannot start payment now", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Checkout checkout = new Checkout();
+            checkout.setKeyID("rzp_test_RDszzhlPQoE13a");
+
+            JSONObject options = new JSONObject();
+            options.put("name", "Your App Name");
+            options.put("description", "Reimbursement Payment");
+            options.put("currency", "INR");
+            options.put("amount", (int)(request.getAmount() * 100));
+
+            JSONObject prefill = new JSONObject();
+            prefill.put("email", "user@example.com");
+            prefill.put("contact", "9876543210");
+            options.put("prefill", prefill);
+
+            // Set theme explicitly
+            options.put("theme", new JSONObject().put("color", "#673AB7"));
+
+            checkout.open(activity, options);
+        } catch (Exception e) {
+            Log.e("RAZORPAY_ERROR", "Payment initialization failed", e);
+            Toast.makeText(getContext(), "Payment initialization failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+
+    // 4. Call backend to mark request credited
+    private void markRequestAsCredited(RequestModel request, String paymentId) {
+        // Choose endpoint based on role
+        Call<Void> call;
+        if ("teamlead".equalsIgnoreCase(request.getRequestType())) {
+            call = apiService.creditTeamLeadBill(request.getBillId());
+        } else {
+            call = apiService.creditStaffBill(request.getBillId());
+        }
+
+        call.enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
+                // Check if the Fragment is still active and attached to an Activity
+                if (getActivity() == null || !isAdded()) {
+                    return; // Do nothing if fragment is not valid
+                }
+
                 if (response.isSuccessful()) {
-                    requestList.remove(request);
-                    adapter.notifyDataSetChanged();
-                    Toast.makeText(getContext(), "Amount credited successfully", Toast.LENGTH_SHORT).show();
+                    // Run UI updates on the main thread
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Request credited successfully!", Toast.LENGTH_SHORT).show();
+                        requestList.remove(request);
+                        adapter.notifyDataSetChanged();
+                        currentRequest = null; // Reset the request
+                    });
                 } else {
-                    try {
-                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "No error body";
-                        Log.d("DEBUG", "Credit Staff failed. Endpoint=" + endpoint + " Code=" + response.code() + " Error=" + errorBody);
-                        Toast.makeText(getContext(), "Credit failed at " + endpoint + "\nCode=" + response.code() + "\nError=" + errorBody, Toast.LENGTH_LONG).show();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Credit failed! Please check backend.", Toast.LENGTH_LONG).show();
+                    });
                 }
             }
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Log.e("DEBUG", "Credit Staff request error: " + t.getMessage(), t);
-                Toast.makeText(getContext(), "Credit failed at " + endpoint + "\nError: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), "Credit failed: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

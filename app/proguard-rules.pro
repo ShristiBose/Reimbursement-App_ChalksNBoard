@@ -19,3 +19,27 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ----------- Razorpay ProGuard Rules -----------
+# These rules are essential for the Razorpay SDK to function correctly in release builds.
+
+# Keeps the JavascriptInterface that Razorpay uses for its WebView.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepattributes JavascriptInterface
+-keepattributes *Annotation*
+
+# Prevents warnings and ensures all Razorpay classes are kept.
+-dontwarn com.razorpay.**
+-keep class com.razorpay.** {*;}
+
+# Required to prevent an issue with method inlining.
+-optimizations !method/inlining/*
+
+# Ensures the payment callback methods are not removed or renamed.
+-keepclasseswithmembers class * {
+    public void onPaymentSuccess(java.lang.String);
+    public void onPaymentError(int, java.lang.String);
+}
+# ----------------- End of Razorpay Rules -----------------

@@ -3,10 +3,13 @@ package com.example.reimbursementapp;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -25,6 +28,7 @@ public class LoginActivity extends AppCompatActivity {
     private Button btnLogin;
     private ApiService apiService;
     private RadioGroup radioGroupRoles;
+    private TextView tvTermsPrivacy;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,11 +39,23 @@ public class LoginActivity extends AppCompatActivity {
         edtPassword = findViewById(R.id.edtPassword);
         btnLogin = findViewById(R.id.btnLogin);
         radioGroupRoles = findViewById(R.id.radioGroupRoles);
-
+        tvTermsPrivacy = findViewById(R.id.tvTermsPrivacy);
 
         apiService = ApiClient.getApiService();
 
+        // Login button listener
         btnLogin.setOnClickListener(v -> loginUser());
+
+        // Step 2: Make Terms & Privacy clickable
+        String text = "By logging in, you agree to our <u>Terms & Conditions</u> and <u>Privacy Policy</u>.";
+        tvTermsPrivacy.setText(Html.fromHtml(text));
+        tvTermsPrivacy.setMovementMethod(LinkMovementMethod.getInstance());
+
+        tvTermsPrivacy.setOnClickListener(v -> {
+            // Open Terms & Privacy screen
+            Intent intent = new Intent(LoginActivity.this, TermsPrivacyActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void loginUser() {
@@ -51,7 +67,6 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-
         Call<LoginResponse> call = apiService.login(new LoginRequest(email, password));
 
         call.enqueue(new Callback<LoginResponse>() {
@@ -62,10 +77,7 @@ public class LoginActivity extends AppCompatActivity {
                     String token = loginResponse.getToken();
                     UserModel user = loginResponse.getUser();
 
-
                     if (token != null && !token.isEmpty() && user != null && user.getRole() != null) {
-
-
                         SharedPreferences.Editor editor = getSharedPreferences("APP_PREFS", MODE_PRIVATE).edit();
                         editor.putString("JWT_TOKEN", token);
                         editor.putString("USER_ID", user.getId());
@@ -73,10 +85,7 @@ public class LoginActivity extends AppCompatActivity {
                         editor.apply();
 
                         Toast.makeText(LoginActivity.this, "Login Successful as " + user.getRole(), Toast.LENGTH_SHORT).show();
-
-
                         redirectToDashboard(user.getRole());
-
                     } else {
                         Toast.makeText(LoginActivity.this, "Login successful, but response data is incomplete.", Toast.LENGTH_LONG).show();
                     }
@@ -95,13 +104,11 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<LoginResponse> call, Throwable t) {
-                // This callback handles network failures, not JSON parsing errors.
                 Log.e("LoginActivity", "Network call failed", t);
                 Toast.makeText(LoginActivity.this, "Network Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
-
 
     private void redirectToDashboard(String role) {
         Intent intent;
@@ -109,7 +116,7 @@ public class LoginActivity extends AppCompatActivity {
             case "ADMIN":
                 intent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
                 break;
-            case "TEAMLEAD": // Or "TEAM_LEAD" depending on your backend
+            case "TEAMLEAD":
             case "TEAM_LEAD":
                 intent = new Intent(LoginActivity.this, TeamLeadDashboardActivity.class);
                 break;
